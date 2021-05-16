@@ -1,9 +1,9 @@
 module Data.CSTRewrite.Rule where
 
-import qualified Language.PureScript.CST.Types as PS
+import Language.PureScript.CST.Types ( ImportDecl )
 
 data ImportRule e
-  = RewriteImport { from :: PS.ImportDecl e, to :: PS.ImportDecl e}
+  = RewriteImport { from :: ImportDecl e, to :: ImportDecl e}
 
 type ImportRules e
   = [ImportRule e]
