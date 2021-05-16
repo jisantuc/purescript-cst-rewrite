@@ -15,7 +15,17 @@ jobs:
           submodules: true
       - uses: haskell/actions/setup@v1
         with:
-          ghc-version: '8.10.4' # Exact version of ghc to use
-          enable-stack: true
-          stack-version: 'latest'
-      - run: stack test
+          ghc-version: '8.10.4'
+      - name: Cache ~/.cabal/packages, ~/.cabal/store and dist-newstyle
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+            dist-newstyle
+          key: ${{ runner.os }}-${{ matrix.ghc }}
+      - name: Build dependencies
+        if: steps.cache-primes.outputs.cache-hit != 'true'
+        run: cabal build --only-dependencies
+      - name: Build and test project
+        run: cabal test
