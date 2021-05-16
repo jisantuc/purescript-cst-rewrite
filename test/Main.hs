@@ -6,7 +6,7 @@ import Language.PureScript.CST.Parser (parseModule)
 import Data.CSTRewrite (rewrite)
 
 main :: IO ()
-main = print "you should write some tests"
+main = testImportRewrite
 
 testImportRewrite :: IO ()
 testImportRewrite = do
