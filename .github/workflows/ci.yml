@@ -18,7 +18,7 @@ jobs:
           submodules: true
       - uses: haskell/actions/setup@v1
         with:
-          ghc-version: '8.10.4'
+          ghc-version: "8.10.4"
       - name: Freeze
         run: |
           cabal freeze
@@ -31,4 +31,4 @@ jobs:
         if: steps.cache-primes.outputs.cache-hit != 'true'
         run: cabal build all --only-dependencies
       - name: Build and test project
-        run: cabal build all && cabal test all
+        run: cabal build all && cabal test all --test-options=--color
