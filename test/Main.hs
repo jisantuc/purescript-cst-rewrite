@@ -10,7 +10,6 @@ import qualified Data.Text.IO as T
 import GHC.IO.Exception (ExitCode (..))
 import qualified Language.PureScript.CST.Lexer as PS
 import qualified Language.PureScript.CST.Parser as PS
-import qualified Language.PureScript.CST.Print as PS
 import qualified Language.PureScript.CST.Types as PS
 import Language.PureScript.Names as N
 import System.Exit (exitWith)
