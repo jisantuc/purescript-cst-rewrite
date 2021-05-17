@@ -1,21 +1,31 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (parseModuleRename)
-import Data.CSTRewrite.Rule (Rules (Rules))
+import Data.CSTRewrite.Rule (ModuleRenameRule (toModuleName), Rules (Rules), fromModuleName)
 import qualified Data.Text.IO as T
 import GHC.IO.Exception (ExitCode (..))
 import qualified Language.PureScript.CST.Lexer as PS
 import qualified Language.PureScript.CST.Parser as PS
 import qualified Language.PureScript.CST.Print as PS
+import Language.PureScript.Names as N
 import System.Exit (exitWith)
+import Test.Hspec (describe, hspec, it, shouldBe)
 import Text.Parsec (parse)
+import Text.Parsec.Error (errorMessages, messageString)
 
 main :: IO ()
-main = do
-  ruleParseTest <- testRuleParser
-  rewriteTest <- testImportRewrite
-  exitWith (maximum [ruleParseTest, rewriteTest])
+main = hspec $ do
+  describe "parse a rule" $ do
+    it "parses a sample rule" $ do
+      testRuleParser
+
+-- ruleParseTest <- testRuleParser
+-- rewriteTest <- testImportRewrite
+
+-- checkRewrite :: (PS.Module -> a) -> PS.Module -> PS.Module -> a ->
 
 testImportRewrite :: IO ExitCode
 testImportRewrite = do
@@ -37,11 +47,17 @@ testImportRewrite = do
     (\m -> ExitSuccess <$ (print . show $ PS.resPartial (rewrite rules <$> m)))
     parsedModule
 
-testRuleParser :: IO ExitCode
+testRuleParser :: IO ()
 testRuleParser = do
   inRuleText <- T.readFile "./test/data/module-rename-single.diff"
   let parsedRule = parse parseModuleRename "./test/data/module-rename-single.diff" inRuleText
   either
-    (\err -> ExitFailure 1 <$ (print $ show err))
-    (\_ -> pure ExitSuccess)
+    ( \err ->
+        let messages = errorMessages err
+         in fail $ "Could not parse sample rule: " <> foldMap messageString messages
+    )
+    ( \rule -> do
+        fromModuleName rule `shouldBe` (N.ModuleName "Foo")
+        toModuleName rule `shouldBe` (N.ModuleName "Foo.Lib")
+    )
     parsedRule

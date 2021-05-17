@@ -34,8 +34,8 @@ parseModuleRename = do
   endOfLine
   char '+'
   newImportLine <- manyTill anyChar (() <$ try endOfLine <|> eof)
-  let (_, oldImportDeclResult) = PS.runParser (parserState $ PS.lex (pack newImportLine)) PS.parseImportDeclP
-  let (_, newImportDeclResult) = PS.runParser (parserState $ PS.lex (pack oldImportLine)) PS.parseImportDeclP
+  let (_, oldImportDeclResult) = PS.runParser (parserState $ PS.lex (pack oldImportLine)) PS.parseImportDeclP
+  let (_, newImportDeclResult) = PS.runParser (parserState $ PS.lex (pack newImportLine)) PS.parseImportDeclP
   case (oldImportDeclResult, newImportDeclResult) of
     (Right old, Right new) ->
       pure $ ModuleRenameRule (PS.nameValue . PS.impModule $ old) (PS.nameValue . PS.impModule $ new)

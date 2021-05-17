@@ -30,7 +30,9 @@ test-suite cst-rewrite-test
   hs-source-dirs:      test
   main-is:             Main.hs
   build-depends:       base
+                     , hspec
                      , purescript-cst-rewrite
+                     , purescript-ast
                      , purescript-cst
                      , parsec
                      , text
