@@ -16,9 +16,13 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Data.CSTRewrite
+                     , Data.CSTRewrite.Parser
                      , Data.CSTRewrite.Rule
   build-depends:       base >= 4.7 && < 5
+                     , purescript-ast
                      , purescript-cst
+                     , parsec
+                     , text
   default-language:    Haskell2010
 
 test-suite cst-rewrite-test
@@ -28,6 +32,7 @@ test-suite cst-rewrite-test
   build-depends:       base
                      , purescript-cst-rewrite
                      , purescript-cst
+                     , parsec
                      , text
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
