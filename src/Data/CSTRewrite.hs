@@ -1,6 +1,6 @@
 module Data.CSTRewrite (rewrite) where
 
-import Data.CSTRewrite.Rule (ImportRule (from, to), ImportRules, ModuleRenameRules, Rules (importRules, moduleRenameRules), fromModuleName, toModuleName)
+import Data.CSTRewrite.Rule (ModuleRenameRules, Rules, fromModuleName, moduleRenameRules, toModuleName)
 import Data.Foldable (fold)
 import qualified Language.PureScript.CST.Types as PS
 import qualified Language.PureScript.Names as N

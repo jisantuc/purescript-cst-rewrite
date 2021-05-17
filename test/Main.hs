@@ -44,10 +44,10 @@ testImportRewrite = do
       (\_ -> fail "couldn't parse example PureScript module -- ensure it is valid PureScript")
       ( \m ->
           let partial = PS.resPartial m
-              rewritten = rewrite (Rules [] [rule]) partial
+              rewritten = rewrite (Rules [rule]) partial
               moduleNames = (PS.nameValue . PS.impModule) <$> PS.modImports rewritten
            in do
-                _ <- moduleNames `shouldContain` ([toModuleName rule])
+                moduleNames `shouldContain` ([toModuleName rule])
                 moduleNames `shouldNotContain` ([fromModuleName rule])
       )
       parsedModule
