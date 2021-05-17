@@ -30,7 +30,6 @@ testImportRewrite = do
   inModuleText <- T.readFile "./test/data/example.purs"
   let lexed = PS.lex inModuleText
   let parsedModule = PS.parseModule lexed
-  print . show $ PS.resPartial <$> parsedModule
   inRuleText <- T.readFile "./test/data/module-rename-single.diff"
   let parsedRule = parse parseModuleRename "./test/data/module-rename-single.diff" inRuleText
   rule <-
