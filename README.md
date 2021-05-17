@@ -31,9 +31,8 @@ Design non-goals are:
   if replacing a deprecated function call requires additional parameters. It also might not
   be desirable, for example, if filling in a `Nothing` where `Maybes` are expected changes
   behavior. The goal is just to automate the boring part, so that users can get to the
-  point where they have to make choices more easily.
-- supporting every kind of rewrite imaginable _right now_. This is very proof-of-concept for
-  now and I'm not going to go full steam ahead until there's some confirmation that this is
+  point where they have to make choices more quickly.
+- supporting every kind of rewrite imaginable _right now_. This is very proof-of-concept and I'm not going to go full steam ahead until there's some confirmation that this is
   a useful tool. The first type of rewrite I'll support is module renames, since they're an
   area where the existing language server tooling isn't super helpful.
 
@@ -57,6 +56,12 @@ purescript-cst-rewrite https://github.com/organization/library/tree/v2.0.0/rules
 ```
 
 And all of the imports would be rewritten for you ✨
+
+The short-term road map is:
+
+- [x] automatic module renames
+- [ ] add the CLI
+- [ ] rename imports (e.g. `s/import Foo (bar)/import Foo (baz)/`)
 
 [ScalaFix]: https://scalacenter.github.io/scalafix/
 [`cats-effect` 3.0 release]: https://github.com/typelevel/cats-effect/tree/series/3.x/scalafix/v3_0_0/input/src/main/scala/fix
