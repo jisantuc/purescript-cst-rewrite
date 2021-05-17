@@ -1,0 +1,34 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [main]
+name: build
+jobs:
+  ci:
+    name: Run tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghc: ["8.10.4"]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: haskell/actions/setup@v1
+        with:
+          ghc-version: "8.10.4"
+      - name: Freeze
+        run: |
+          cabal freeze
+      - name: Cache ~/.cabal/packages, ~/.cabal/store and dist-newstyle
+        uses: actions/cache@v2
+        with:
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
+      - name: Build dependencies
+        if: steps.cache-primes.outputs.cache-hit != 'true'
+        run: cabal build all --only-dependencies
+      - name: Build and test project
+        run: cabal build all && cabal test all --test-options=--color

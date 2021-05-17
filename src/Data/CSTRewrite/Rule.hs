@@ -1,12 +1,13 @@
 module Data.CSTRewrite.Rule where
 
-import qualified Language.PureScript.CST.Types as PS
+import Language.PureScript.CST.Types (ImportDecl)
+import qualified Language.PureScript.Names as N
 
-data ImportRule e
-  = RewriteImport { from :: PS.ImportDecl e, to :: PS.ImportDecl e}
+data ModuleRenameRule e = ModuleRenameRule {fromModuleName :: N.ModuleName, toModuleName :: N.ModuleName} deriving (Eq, Show)
 
-type ImportRules e
-  = [ImportRule e]
+type ModuleRenameRules e =
+  [ModuleRenameRule e]
 
-data Rules e
-  = Rules { importRules :: ImportRules e }
+data Rules e = Rules
+  { moduleRenameRules :: ModuleRenameRules e
+  }

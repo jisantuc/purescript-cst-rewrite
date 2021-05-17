@@ -1,0 +1,5 @@
+# module rename
+--- from
+-import Foo
++++ to
++import Foo.Lib
