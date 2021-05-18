@@ -2,6 +2,18 @@
 
 ScalaFix for PureScript!
 
+## tl;dr:
+
+```
+stack build
+find -name example-dir/ | xargs stack exec purescript-fix test/data/module-rename-single.diff
+git diff
+```
+
+Then you can inspect the rule and the diff produced by applying it.
+
+## Long version
+
 [ScalaFix] is a tool for automatically rewriting Scala code based on
 rules. These rules can be used for a few things:
 
@@ -60,7 +72,7 @@ And all of the imports would be rewritten for you ✨
 The short-term road map is:
 
 - [x] automatic module renames
-- [ ] add the CLI
+- [x] add the CLI
 - [ ] rename imports (e.g. `s/import Foo (bar)/import Foo (baz)/`)
 
 [ScalaFix]: https://scalacenter.github.io/scalafix/
