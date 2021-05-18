@@ -1,7 +1,6 @@
 module Data.CSTRewrite (rewrite) where
 
 import Data.CSTRewrite.Rule (ModuleRenameRules, Rules, fromModuleName, moduleRenameRules, toModuleName)
-import Data.Foldable (fold)
 import Data.Monoid (Endo (..), appEndo)
 import qualified Language.PureScript.CST.Types as PS
 import qualified Language.PureScript.Names as N
@@ -10,8 +9,7 @@ mkModuleNameReplacer :: Eq e => ModuleRenameRules e -> Endo (PS.ImportDecl e)
 mkModuleNameReplacer rules =
   let froms = fromModuleName <$> rules
       tos = toModuleName <$> rules
-      partials = Endo <$> zipWith renameModule froms tos
-   in fold partials
+   in foldMap Endo $ zipWith renameModule froms tos
 
 renameModule :: Eq e => N.ModuleName -> N.ModuleName -> PS.ImportDecl e -> PS.ImportDecl e
 renameModule from to decl =
