@@ -46,6 +46,8 @@ test-suite cst-rewrite-test
                      , purescript-ast
                      , purescript-cst
                      , purescript-cst-rewrite
+                     , temporary
+                     , text
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 

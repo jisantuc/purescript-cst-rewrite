@@ -9,9 +9,11 @@ import Data.CSTRewrite.Rule
     Rules (Rules, moduleRenameRules),
     fromModuleName,
   )
+import qualified Data.Text as T
 import qualified Language.PureScript.CST.Print as PS
 import qualified Language.PureScript.CST.Types as PS
 import Language.PureScript.Names as N
+import System.IO.Temp (withSystemTempDirectory, writeTempFile)
 import Test.Hspec
   ( describe,
     hspec,
@@ -29,18 +31,27 @@ main = hspec $ do
     it "replaces the old module name in imports with the new one" $ do
       testImportRewrite
 
+getModuleName :: PS.ImportDecl a -> ModuleName
+getModuleName = PS.nameValue . PS.impModule
+
 testImportRewrite :: IO ()
 testImportRewrite = do
   psModule <- readModuleFromPath "./test/data/example.purs"
   rules <- readRulesFromPath "./test/data/module-rename-single.diff"
 
   let rewritten = rewrite rules psModule
-      moduleNames = (PS.nameValue . PS.impModule) <$> PS.modImports rewritten
+      moduleNames = getModuleName <$> PS.modImports rewritten
       rule = head $ moduleRenameRules rules
    in do
-        print $ PS.printModule rewritten
         moduleNames `shouldContain` ([toModuleName rule])
         moduleNames `shouldNotContain` ([fromModuleName rule])
+        withSystemTempDirectory "rewrite-test" $ \dirPath ->
+          do
+            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
+            rewrittenFromFile <- readModuleFromPath fp
+            let rewrittenModNames = getModuleName <$> PS.modImports rewrittenFromFile
+            rewrittenModNames `shouldContain` ([toModuleName rule])
+            rewrittenModNames `shouldNotContain` ([fromModuleName rule])
 
 testRuleParser :: IO ()
 testRuleParser = do
