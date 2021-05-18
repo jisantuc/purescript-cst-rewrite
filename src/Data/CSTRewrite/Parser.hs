@@ -7,7 +7,7 @@ import qualified Language.PureScript.CST.Lexer as PS
 import qualified Language.PureScript.CST.Monad as PS
 import qualified Language.PureScript.CST.Parser as PS
 import qualified Language.PureScript.CST.Types as PS
-import Text.Parsec (ParseError, ParsecT, anyChar, endBy, endOfLine, eof, manyTill, parserFail, try, (<|>))
+import Text.Parsec (ParsecT, anyChar, endOfLine, eof, manyTill, parserFail, try, (<|>))
 import Text.ParserCombinators.Parsec.Char (char, string)
 
 type RuleParser = ParsecT Text () Identity
@@ -24,16 +24,11 @@ parserState lexed = PS.ParserState lexed [] []
 
 parseModuleRename :: RuleParser (ModuleRenameRule ())
 parseModuleRename = do
-  string "# module rename"
-  endOfLine
-  string "--- from"
-  endOfLine
-  char '-'
-  oldImportLine <- manyTill anyChar endOfLine
-  string "+++ to"
-  endOfLine
-  char '+'
-  newImportLine <- manyTill anyChar (() <$ try endOfLine <|> eof)
+  _ <- string "# module rename" <* endOfLine
+  _ <- string "--- from" <* endOfLine
+  oldImportLine <- char '-' *> manyTill anyChar endOfLine
+  _ <- string "+++ to" <* endOfLine
+  newImportLine <- char '+' *> manyTill anyChar (() <$ try endOfLine <|> eof)
   let (_, oldImportDeclResult) = PS.runParser (parserState $ PS.lex (pack oldImportLine)) PS.parseImportDeclP
   let (_, newImportDeclResult) = PS.runParser (parserState $ PS.lex (pack newImportLine)) PS.parseImportDeclP
   case (oldImportDeclResult, newImportDeclResult) of
