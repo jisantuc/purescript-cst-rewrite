@@ -10,3 +10,4 @@ type ModuleRenameRules e =
 data Rules e = Rules
   { moduleRenameRules :: ModuleRenameRules e
   }
+  deriving (Eq, Show)

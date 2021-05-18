@@ -1,21 +1,43 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import Data.Text (Text)
-import Options.Applicative (Parser, execParser, fullDesc, header, helper, info, metavar, progDesc, strArgument, (<**>))
+import Data.CSTRewrite (rewriteFile)
+import Data.CSTRewrite.Parser (readRulesFromPath)
+import Options.Applicative
+  ( Parser,
+    execParser,
+    fullDesc,
+    header,
+    helper,
+    info,
+    metavar,
+    progDesc,
+    some,
+    strArgument,
+    (<**>),
+  )
 
 data Options = Options
-  { rulePath :: Text,
-    srcPath :: Text
+  { rulePath :: FilePath,
+    srcPaths :: [FilePath]
   }
 
 options :: Parser Options
 options =
   Options
     <$> strArgument (metavar "RULEPATH")
-    <*> strArgument (metavar "SRCPATH")
+    <*> ( some $
+            strArgument (metavar "SRCPATHS")
+        )
 
 run :: Options -> IO ()
-run = const (print "woohoo")
+run opts = do
+  rules <- readRulesFromPath (rulePath opts)
+  (rewriteFile rules) `traverse` srcPaths opts
+    >>= ( \results ->
+            print $ "Rewrote " <> show (length results) <> " files"
+        )
 
 main :: IO ()
 main = execParser opts >>= run
