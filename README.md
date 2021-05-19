@@ -8,7 +8,7 @@ ScalaFix for PureScript!
 git clone --recurse-submodule git@github.com:jisantuc/purescript-cst-rewrite.git
 cd purescript-cst-rewrite
 stack build
-find -name example-dir/ | xargs stack exec purescript-fix test/data/module-rename-single.diff
+find example-dir -name '*.purs' | xargs stack exec purescript-fix test/data/module-rename-single.diff
 git diff
 ```
 
