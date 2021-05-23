@@ -1,0 +1,5 @@
+# import rename
+--- from
+-import Foo (bar, baz)
++++ to
++import Foo (qux, quux)
