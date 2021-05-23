@@ -4,6 +4,7 @@ module Data.CSTRewrite.Parser where
 
 import Data.CSTRewrite.Rule (ModuleRenameRule (ModuleRenameRule), Rules (Rules))
 import Data.Functor.Identity (Identity)
+import qualified Data.Set as Set
 import Data.Text (Text, pack)
 import qualified Data.Text.IO as T
 import qualified Language.PureScript.CST.Errors as PS
@@ -17,12 +18,28 @@ import Text.ParserCombinators.Parsec.Char (char, string)
 
 type RuleParser = ParsecT Text () Identity
 
--- what's the game? re-use the existing parser for ImportDecls
--- to parse a git diff-style document showing the old import and
--- the new import.
--- the idea here is that users will get to specify the old and
--- new imports in the familiar purescript style, and I won't have
--- to invent a format for the planned change.
+-- Rule lines should be wholly consumed except for EOF.
+-- If there's extra data in the rule line that's _not_
+-- an EOF (e.g., when parsing:
+-- import Foo hi how's it going buddy
+-- ) that probably indicates user error. As a result, the
+-- rule parser should fail in such a circumstance. The resulting
+-- error message here isn't quite pretty, but it at least communicates
+-- that something unexpected happened.
+checkAcceptableSurplus :: PS.ParserState -> RuleParser ()
+checkAcceptableSurplus state =
+  case sequence $ PS.parserBuff state of
+    Right tokens ->
+      let acceptableTokens = Set.singleton PS.TokEof
+          allExtraTokens = Set.fromList (PS.tokValue <$> tokens) `Set.union` acceptableTokens
+       in if (allExtraTokens == acceptableTokens)
+            then pure ()
+            else
+              parserFail $
+                "Extra token encountered while parsing a rule: "
+                  <> show
+                    (allExtraTokens `Set.difference` acceptableTokens)
+    Left (_, err) -> parserFail $ PS.prettyPrintError err
 
 parserState :: [PS.LexResult] -> PS.ParserState
 parserState lexed = PS.ParserState lexed [] []
@@ -34,11 +51,16 @@ parseModuleRename = do
   oldImportLine <- char '-' *> manyTill anyChar endOfLine
   _ <- string "+++ to" <* endOfLine
   newImportLine <- char '+' *> manyTill anyChar (() <$ try endOfLine <|> eof)
-  let (_, oldImportDeclResult) = PS.runParser (parserState $ PS.lex (pack oldImportLine)) PS.parseImportDeclP
-  let (_, newImportDeclResult) = PS.runParser (parserState $ PS.lex (pack newImportLine)) PS.parseImportDeclP
+  let (oldState, oldImportDeclResult) = PS.runParser (parserState $ PS.lex (pack oldImportLine)) PS.parseImportDeclP
+  checkAcceptableSurplus oldState
+  let (newState, newImportDeclResult) = PS.runParser (parserState $ PS.lex (pack newImportLine)) PS.parseImportDeclP
+  checkAcceptableSurplus newState
   case (oldImportDeclResult, newImportDeclResult) of
     (Right old, Right new) ->
-      pure $ ModuleRenameRule (PS.nameValue . PS.impModule $ old) (PS.nameValue . PS.impModule $ new)
+      pure $
+        ModuleRenameRule
+          (PS.nameValue . PS.impModule $ old)
+          (PS.nameValue . PS.impModule $ new)
     (Left old, Left new) ->
       parserFail $ show old ++ show new
     (Left old, _) ->
@@ -47,8 +69,7 @@ parseModuleRename = do
       parserFail $ show new
 
 parseRules :: RuleParser (Rules ())
-parseRules = do
-  Rules <$> sepBy1 parseModuleRename endOfLine
+parseRules = Rules <$> sepBy1 parseModuleRename endOfLine
 
 readRulesFromPath :: FilePath -> IO (Rules ())
 readRulesFromPath src = do
