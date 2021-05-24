@@ -8,6 +8,12 @@ data ModuleRenameRule e = ModuleRenameRule {fromModuleName :: N.ModuleName, toMo
 type ModuleRenameRules e =
   [ModuleRenameRule e]
 
+-- working with:
+-- ImportValue () (
+--   Name {
+--     nameTok = SourceToken {tokAnn = TokenAnn {tokRange = SourceRange {srcStart = SourcePos {srcLine = 1, srcColumn = 17}, srcEnd = SourcePos {srcLine = 1, srcColumn = 20}}, tokLeadingComments = [], tokTrailingComments = []}, tokValue = TokLowerName [] "baz"}, nameValue = Ident {getIdent = "baz"}
+--   }
+-- )
 data ImportRenameRule e = ImportRenameRule {fromImportName :: PS.Ident, toImportName :: PS.Ident} deriving (Eq, Show)
 
 type ImportRenameRules e = [ImportRenameRule e]
