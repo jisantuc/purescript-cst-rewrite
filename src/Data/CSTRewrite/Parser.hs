@@ -69,7 +69,7 @@ parseModuleRename = do
       parserFail $ show new
 
 parseRules :: RuleParser (Rules ())
-parseRules = Rules <$> sepBy1 parseModuleRename endOfLine
+parseRules = Rules <$> sepBy1 parseModuleRename endOfLine <*> pure []
 
 readRulesFromPath :: FilePath -> IO (Rules ())
 readRulesFromPath src = do
