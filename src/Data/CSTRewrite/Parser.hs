@@ -1,6 +1,7 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.CSTRewrite.Parser where
+module Data.CSTRewrite.Parser (readRulesFromPath, readModuleFromPath) where
 
 import Data.CSTRewrite.Rule (Rule (..), Rules)
 import Data.Functor.Identity (Identity)
@@ -41,26 +42,53 @@ checkAcceptableSurplus state =
                     (allExtraTokens `Set.difference` acceptableTokens)
     Left (_, err) -> parserFail $ PS.prettyPrintError err
 
+-- Getting identifiers out of imports requires going into some pretty
+-- nested structure, so it lives ina  helper function here
+getImportIdents :: PS.ImportDecl () -> [PS.Ident]
+getImportIdents decl =
+  let unSeparate sep = PS.sepHead sep : (snd <$> PS.sepTail sep)
+      names = snd <$> PS.impNames decl
+      unwrapped = unSeparate . PS.wrpValue <$> names
+   in ( \case
+          Nothing -> []
+          Just imports ->
+            imports
+              >>= ( \case
+                      PS.ImportValue _ name -> [PS.nameValue name]
+                      _ -> []
+                  )
+      )
+        unwrapped
+
 parserState :: [PS.LexResult] -> PS.ParserState
 parserState lexed = PS.ParserState lexed [] []
 
-parseModuleRename :: RuleParser (Rule ())
-parseModuleRename = do
-  _ <- string "# module rename" <* endOfLine
-  _ <- string "--- from" <* endOfLine
-  oldImportLine <- char '-' *> manyTill anyChar endOfLine
-  _ <- string "+++ to" <* endOfLine
-  newImportLine <- char '+' *> manyTill anyChar (() <$ try endOfLine <|> eof)
+fromLine :: RuleParser String
+fromLine = string "--- from" <* endOfLine
+
+toLine :: RuleParser String
+toLine = string "+++ to" <* endOfLine
+
+oldLineAsString :: RuleParser String
+oldLineAsString = char '-' *> manyTill anyChar endOfLine
+
+newLineAsString :: RuleParser String
+newLineAsString = char '+' *> manyTill anyChar (() <$ try endOfLine <|> eof)
+
+parseRewrite :: String -> (PS.ImportDecl () -> PS.ImportDecl () -> RuleParser (Rules ())) -> RuleParser (Rules ())
+parseRewrite s f = do
+  _ <- string ("# " <> s) <* endOfLine
+  _ <- fromLine
+  oldImportLine <- oldLineAsString
+  _ <- toLine
+  newImportLine <- newLineAsString
   let (oldState, oldImportDeclResult) = PS.runParser (parserState $ PS.lex (pack oldImportLine)) PS.parseImportDeclP
   checkAcceptableSurplus oldState
   let (newState, newImportDeclResult) = PS.runParser (parserState $ PS.lex (pack newImportLine)) PS.parseImportDeclP
   checkAcceptableSurplus newState
   case (oldImportDeclResult, newImportDeclResult) of
     (Right old, Right new) ->
-      pure $
-        ModuleRenameRule
-          (PS.nameValue . PS.impModule $ old)
-          (PS.nameValue . PS.impModule $ new)
+      f old new
     (Left old, Left new) ->
       parserFail $ show old ++ show new
     (Left old, _) ->
@@ -68,8 +96,29 @@ parseModuleRename = do
     (_, Left new) ->
       parserFail $ show new
 
+parseModuleRename :: RuleParser (Rules ())
+parseModuleRename =
+  parseRewrite
+    "module rename"
+    ( \old new ->
+        pure . pure $
+          ModuleRenameRule
+            (PS.nameValue . PS.impModule $ old)
+            (PS.nameValue . PS.impModule $ new)
+    )
+
+parseImportRename :: RuleParser (Rules ())
+parseImportRename =
+  parseRewrite
+    "import rename"
+    ( \old new ->
+        let oldNames = getImportIdents old
+            newNames = getImportIdents new
+         in pure $ zipWith ImportRenameRule oldNames newNames
+    )
+
 parseRules :: RuleParser (Rules ())
-parseRules = sepBy1 parseModuleRename endOfLine
+parseRules = mconcat <$> sepBy1 (try parseModuleRename <|> parseImportRename) endOfLine
 
 readRulesFromPath :: FilePath -> IO (Rules ())
 readRulesFromPath src = do

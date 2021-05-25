@@ -85,4 +85,6 @@ testImportRenameRuleParser = do
     rules
 
 unexpectedRule :: MonadFail m => Rule () -> m ()
-unexpectedRule rule = fail $ "Encountered an unexpected rule while parsing. Expected a ModuleRenameRule, got: " <> show rule
+unexpectedRule rule =
+  fail $
+    "Encountered an unexpected rule while parsing. Expected a ModuleRenameRule, got: " <> show rule
