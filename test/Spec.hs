@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -5,9 +6,9 @@ module Main where
 import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (readModuleFromPath, readRulesFromPath)
 import Data.CSTRewrite.Rule
-  ( ModuleRenameRule (toModuleName),
-    Rules (Rules, moduleRenameRules),
+  ( Rule (ImportRenameRule, ModuleRenameRule),
     fromModuleName,
+    toModuleName,
   )
 import qualified Data.Text as T
 import qualified Language.PureScript.CST.Print as PS
@@ -27,7 +28,9 @@ main :: IO ()
 main = hspec $ do
   describe "rename modules" $ do
     it "parses a sample module rename rule" $ do
-      testRuleParser
+      testModuleRenameRuleParser
+    it "parses a sample import rename rule" $ do
+      testImportRenameRuleParser
     it "replaces the old module name in imports with the new one" $ do
       testImportRewrite
 
@@ -41,7 +44,7 @@ testImportRewrite = do
 
   let rewritten = rewrite rules psModule
       moduleNames = getModuleName <$> PS.modImports rewritten
-      rule = head $ moduleRenameRules rules
+      rule = head rules
    in do
         moduleNames `shouldContain` ([toModuleName rule])
         moduleNames `shouldNotContain` ([fromModuleName rule])
@@ -53,12 +56,33 @@ testImportRewrite = do
             rewrittenModNames `shouldContain` ([toModuleName rule])
             rewrittenModNames `shouldNotContain` ([fromModuleName rule])
 
-testRuleParser :: IO ()
-testRuleParser = do
-  (Rules rules) <- readRulesFromPath "./test/data/module-rename-single.diff"
+testModuleRenameRuleParser :: IO ()
+testModuleRenameRuleParser = do
+  rules <- readRulesFromPath "./test/data/module-rename-single.diff"
   foldMap
-    ( \rule -> do
-        fromModuleName rule `shouldBe` (N.ModuleName "Foo")
-        toModuleName rule `shouldBe` (N.ModuleName "Foo.Lib")
+    ( \case
+        ModuleRenameRule from to ->
+          do
+            from `shouldBe` (N.ModuleName "Foo")
+            to `shouldBe` (N.ModuleName "Foo.Lib")
+        r ->
+          unexpectedRule r
     )
     rules
+
+testImportRenameRuleParser :: IO ()
+testImportRenameRuleParser = do
+  rules <- readRulesFromPath "./test/data/import-rename-single.diff"
+  foldMap
+    ( \case
+        ImportRenameRule from to ->
+          do
+            from `shouldBe` PS.Ident "bar"
+            to `shouldBe` PS.Ident "baz"
+        r ->
+          unexpectedRule r
+    )
+    rules
+
+unexpectedRule :: MonadFail m => Rule () -> m ()
+unexpectedRule rule = fail $ "Encountered an unexpected rule while parsing. Expected a ModuleRenameRule, got: " <> show rule

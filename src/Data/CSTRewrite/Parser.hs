@@ -2,7 +2,7 @@
 
 module Data.CSTRewrite.Parser where
 
-import Data.CSTRewrite.Rule (ModuleRenameRule (ModuleRenameRule), Rules (Rules))
+import Data.CSTRewrite.Rule (Rule (..), Rules)
 import Data.Functor.Identity (Identity)
 import qualified Data.Set as Set
 import Data.Text (Text, pack)
@@ -44,7 +44,7 @@ checkAcceptableSurplus state =
 parserState :: [PS.LexResult] -> PS.ParserState
 parserState lexed = PS.ParserState lexed [] []
 
-parseModuleRename :: RuleParser (ModuleRenameRule ())
+parseModuleRename :: RuleParser (Rule ())
 parseModuleRename = do
   _ <- string "# module rename" <* endOfLine
   _ <- string "--- from" <* endOfLine
@@ -69,7 +69,7 @@ parseModuleRename = do
       parserFail $ show new
 
 parseRules :: RuleParser (Rules ())
-parseRules = Rules <$> sepBy1 parseModuleRename endOfLine <*> pure []
+parseRules = sepBy1 parseModuleRename endOfLine
 
 readRulesFromPath :: FilePath -> IO (Rules ())
 readRulesFromPath src = do
