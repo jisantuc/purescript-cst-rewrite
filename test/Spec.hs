@@ -32,14 +32,14 @@ main = hspec $ do
     it "parses a sample import rename rule" $ do
       testImportRenameRuleParser
     it "replaces the old module name in imports with the new one" $ do
-      testImportRewrite
+      testModuleNameRewrite
 
 getModuleName :: PS.ImportDecl a -> ModuleName
 getModuleName = PS.nameValue . PS.impModule
 
-testImportRewrite :: IO ()
-testImportRewrite = do
-  psModule <- readModuleFromPath "./test/data/example.purs"
+testModuleNameRewrite :: IO ()
+testModuleNameRewrite = do
+  psModule <- readModuleFromPath "./test/data/example-modules/foo-test.purs"
   rules <- readRulesFromPath "./test/data/module-rename-single.diff"
 
   let rewritten = rewrite rules psModule
