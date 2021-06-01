@@ -1,9 +1,10 @@
 module Data.CSTRewrite (rewrite, rewriteFile) where
 
 import Data.CSTRewrite.Parser (readModuleFromPath)
-import Data.CSTRewrite.Rule (Rules, fromModuleName, toModuleName)
+import Data.CSTRewrite.Rule (Rules, fromImportName, fromModuleName, toImportName, toModuleName)
 import Data.Monoid (Endo (..), appEndo)
 import qualified Data.Text.IO as T
+import Debug.Trace (trace)
 import qualified Language.PureScript.CST.Print as PS
 import qualified Language.PureScript.CST.Types as PS
 import qualified Language.PureScript.Names as N
@@ -13,6 +14,12 @@ mkModuleNameReplacer rules =
   let froms = fromModuleName <$> rules
       tos = toModuleName <$> rules
    in foldMap Endo $ zipWith renameModule froms tos
+
+mkImportNameReplacer :: (Eq e, Show e) => Rules e -> Endo (PS.ImportDecl e)
+mkImportNameReplacer rules =
+  let froms = fromImportName <$> rules
+      tos = toImportName <$> rules
+   in foldMap Endo $ zipWith renameImport froms tos
 
 renameModule :: (Eq e, Show e) => N.ModuleName -> N.ModuleName -> PS.ImportDecl e -> PS.ImportDecl e
 renameModule from to decl =
@@ -27,15 +34,36 @@ renameModule from to decl =
             }
         else decl
 
-renameImport :: (Eq e, Show e) => PS.Import e -> PS.Import e -> PS.ImportDecl e -> PS.ImportDecl e
-renameImport (PS.ImportValue oldV oldN) (PS.ImportValue newV newN) = undefined
-renameImport _ _ = id
+replaceImportName :: (Eq e, Show e) => PS.Ident -> PS.Ident -> PS.Import e -> PS.Import e
+replaceImportName fromIdent toIdent imp@(PS.ImportValue e name) =
+  if (PS.nameValue name == fromIdent)
+    then
+      let newName = name {PS.nameValue = toIdent}
+       in PS.ImportValue e newName
+    else imp
+replaceImportName _ _ imp = imp
+
+-- replace impKeyword -> SourceToken { }
+renameImport :: (Eq e, Show e) => PS.Ident -> PS.Ident -> PS.ImportDecl e -> PS.ImportDecl e
+renameImport fromValue toValue decl =
+  let names = PS.impNames decl
+      imports =
+        ( \(t, PS.Wrapped open imports close) ->
+            ( t,
+              PS.Wrapped
+                open
+                (replaceImportName fromValue toValue <$> imports)
+                close
+            )
+        )
+          <$> names
+   in decl {PS.impNames = imports}
 
 rewrite :: (Eq e, Show e) => Rules e -> PS.Module e -> PS.Module e
 rewrite rules psModule =
-  let moduleRenames = rules
-      replacer = mkModuleNameReplacer moduleRenames
-      replaced = appEndo replacer <$> PS.modImports psModule
+  let importReplacer = mkImportNameReplacer rules
+      -- modReplacer = mkModuleNameReplacer rules
+      replaced = appEndo importReplacer <$> PS.modImports psModule
    in psModule {PS.modImports = replaced}
 
 rewriteFile :: Rules () -> FilePath -> IO ()
