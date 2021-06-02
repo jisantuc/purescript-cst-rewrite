@@ -34,9 +34,8 @@ main = hspec $ do
     it "replaces the old module name in imports with the new one" $ do
       testModuleNameRewrite
   describe "rename imports" $ do
-    it "parses a sample import rename rule" $ do
-      testImportRenameRuleParser
-    xit "parses an import rule for plural imports" (mzero :: IO ())
+    it "parses a sample import rename rule" testImportRenameRuleParser
+    it "parses an import rule for plural imports" testImportRenameRulePluralParser
     xit "renames a single import" (mzero :: IO ())
     xit "renames plural imports" (mzero :: IO ())
   describe "apply staged renames" $ do
@@ -93,6 +92,20 @@ testImportRenameRuleParser = do
           unexpectedRule r
     )
     rules
+
+testImportRenameRulePluralParser :: IO ()
+testImportRenameRulePluralParser = do
+  rules <- readRulesFromPath "./test/data/import-rename-plural.diff"
+  let checks = zip [(PS.Ident "bar", PS.Ident "qux"), (PS.Ident "baz", PS.Ident "quux")] rules
+  foldMap
+    ( \case
+        ((from, to), ImportRenameRule f t) -> do
+          f `shouldBe` from
+          t `shouldBe` to
+        (_, r) ->
+          unexpectedRule r
+    )
+    checks
 
 unexpectedRule :: MonadFail m => Rule () -> m ()
 unexpectedRule rule =
