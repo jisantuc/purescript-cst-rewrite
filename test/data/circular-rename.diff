@@ -18,6 +18,6 @@
 
 # import rename
 --- from
--import Foo.Lib (baz)
+-import Foo (baz)
 +++ to
-+import Foo.Lib (bar)
++import Foo (bar)

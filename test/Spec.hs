@@ -1,6 +1,5 @@
 module Main where
 
-import Control.Monad (mzero)
 import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (readModuleFromPath, readRulesFromPath)
 import Data.CSTRewrite.Rule
@@ -31,7 +30,6 @@ import Test.Hspec
     shouldBe,
     shouldContain,
     shouldNotContain,
-    xit,
   )
 
 main :: IO ()
@@ -47,7 +45,7 @@ main = hspec $ do
   describe "apply staged renames" $ do
     it "parses a rule file with more than one rule defined" testMixedRuleParse
     it "applies renames successively" testStagedRewrite
-    xit "gets back to the beginning with a circular rename rule" (mzero :: IO ())
+    it "gets back to the beginning with a circular rename rule" testCircularRewrite
 
 testModule :: FilePath -> FilePath
 testModule = ("./test/data/example-modules/" <>)
@@ -179,6 +177,23 @@ testStagedRewrite =
           idents `shouldContain` toImportNames rules
           idents `shouldNotContain` fromImportNames rules
     )
+
+testCircularRewrite :: IO ()
+testCircularRewrite = do
+  psModule <- readModuleFromPath $ testModule "foo-test.purs"
+  rules <- readRulesFromPath "./test/data/circular-rename.diff"
+
+  let rewritten = rewrite rules psModule
+      startImports = PS.modImports psModule
+      imports = PS.modImports rewritten
+   in do
+        imports `shouldBe` startImports
+        withSystemTempDirectory "rewrite-test" $ \dirPath ->
+          do
+            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
+            rewrittenFromFile <- readModuleFromPath fp
+            let postRewrite = PS.modImports rewrittenFromFile
+            postRewrite `shouldBe` startImports
 
 testRewrite ::
   -- | Where the test module lives
