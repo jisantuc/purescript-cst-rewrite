@@ -29,10 +29,8 @@ import Test.Hspec
 main :: IO ()
 main = hspec $ do
   describe "rename modules" $ do
-    it "parses a sample module rename rule" $ do
-      testModuleRenameRuleParser
-    it "replaces the old module name in imports with the new one" $ do
-      testModuleNameRewrite
+    it "parses a sample module rename rule" testModuleRenameRuleParser
+    it "replaces the old module name in imports with the new one" testModuleNameRewrite
   describe "rename imports" $ do
     it "parses a sample import rename rule" testImportRenameRuleParser
     it "parses an import rule for plural imports" testImportRenameRulePluralParser
