@@ -13,6 +13,7 @@ import Data.CSTRewrite.Rule
     fromModuleName,
     toModuleName,
   )
+import Data.Functor (void)
 import qualified Data.Text as T
 import qualified Language.PureScript.CST.Print as PS
 import qualified Language.PureScript.CST.Types as PS
@@ -37,7 +38,7 @@ main = hspec $ do
     it "parses a sample import rename rule" testImportRenameRuleParser
     it "parses an import rule for plural imports" testImportRenameRulePluralParser
     it "renames a single import" testSingleImportRename
-    xit "renames plural imports" (mzero :: IO ())
+    it "renames plural imports" testPluralImportRename
   describe "apply staged renames" $ do
     it "parses a rule file with more than one rule defined" testMixedRuleParse
     xit "applies renames successively" (mzero :: IO ())
@@ -147,6 +148,17 @@ testSingleImportRename =
         do
           idents `shouldContain` (toImportName <$> rules)
           idents `shouldNotContain` (fromImportName <$> rules)
+    )
+
+testPluralImportRename :: IO ()
+testPluralImportRename =
+  testRewrite
+    "foo-multi-import.purs"
+    "./test/data/import-rename-plural.diff"
+    (getImportDeclNames =<<)
+    ( \idents rules -> do
+        void $ traverse (\rule -> idents `shouldNotContain` [fromImportName rule]) rules
+        void $ traverse (\rule -> idents `shouldContain` [toImportName rule]) rules
     )
 
 testRewrite ::
