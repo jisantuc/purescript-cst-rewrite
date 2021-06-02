@@ -37,7 +37,7 @@ main = hspec $ do
     xit "renames a single import" (mzero :: IO ())
     xit "renames plural imports" (mzero :: IO ())
   describe "apply staged renames" $ do
-    xit "parses a rule file with more than one rule defined" (mzero :: IO ())
+    it "parses a rule file with more than one rule defined" testMixedRuleParse
     xit "applies renames successively" (mzero :: IO ())
     xit "gets back to the beginning with a circular rename rule" (mzero :: IO ())
 
@@ -105,7 +105,22 @@ testImportRenameRulePluralParser = do
     )
     checks
 
+testMixedRuleParse :: IO ()
+testMixedRuleParse = do
+  rules <- readRulesFromPath "./test/data/staged-rename.diff"
+  case rules of
+    [ModuleRenameRule modFrom modTo, ImportRenameRule impFrom impTo] ->
+      do
+        modFrom `shouldBe` N.ModuleName "Foo"
+        modTo `shouldBe` N.ModuleName "Foo.Lib"
+        impFrom `shouldBe` PS.Ident "bar"
+        impTo `shouldBe` PS.Ident "baz"
+    rs ->
+      fail $
+        "Expected exactly a module rename rule, than an import rename rule. Got: " <> show rs
+
 unexpectedRule :: MonadFail m => Rule () -> m ()
 unexpectedRule rule =
   fail $
-    "Encountered an unexpected rule while parsing. Expected a ModuleRenameRule, got: " <> show rule
+    "Encountered an unexpected rule while parsing. Expected a ModuleRenameRule, got: "
+      <> show rule
