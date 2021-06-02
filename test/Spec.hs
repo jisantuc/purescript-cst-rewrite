@@ -3,6 +3,7 @@
 
 module Main where
 
+import Control.Monad (mzero)
 import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (readModuleFromPath, readRulesFromPath)
 import Data.CSTRewrite.Rule
@@ -22,6 +23,7 @@ import Test.Hspec
     shouldBe,
     shouldContain,
     shouldNotContain,
+    xit,
   )
 
 main :: IO ()
@@ -29,10 +31,18 @@ main = hspec $ do
   describe "rename modules" $ do
     it "parses a sample module rename rule" $ do
       testModuleRenameRuleParser
-    it "parses a sample import rename rule" $ do
-      testImportRenameRuleParser
     it "replaces the old module name in imports with the new one" $ do
       testModuleNameRewrite
+  describe "rename imports" $ do
+    it "parses a sample import rename rule" $ do
+      testImportRenameRuleParser
+    xit "parses an import rule for plural imports" (mzero :: IO ())
+    xit "renames a single import" (mzero :: IO ())
+    xit "renames plural imports" (mzero :: IO ())
+  describe "apply staged renames" $ do
+    xit "parses a rule file with more than one rule defined" (mzero :: IO ())
+    xit "applies renames successively" (mzero :: IO ())
+    xit "gets back to the beginning with a circular rename rule" (mzero :: IO ())
 
 getModuleName :: PS.ImportDecl a -> ModuleName
 getModuleName = PS.nameValue . PS.impModule
