@@ -70,18 +70,6 @@ getImportDeclNames decl =
             names
         Nothing -> []
 
-testModuleNameRewrite :: IO ()
-testModuleNameRewrite =
-  testRewrite
-    "foo-test.purs"
-    "./test/data/module-rename-single.diff"
-    (getModuleName <$>)
-    ( \moduleNames rules ->
-        do
-          moduleNames `shouldContain` (toModuleName <$> rules)
-          moduleNames `shouldNotContain` (fromModuleName <$> rules)
-    )
-
 testModuleRenameRuleParser :: IO ()
 testModuleRenameRuleParser = do
   rules <- readRulesFromPath "./test/data/module-rename-single.diff"
@@ -137,6 +125,18 @@ testMixedRuleParse = do
     rs ->
       fail $
         "Expected exactly a module rename rule, than an import rename rule. Got: " <> show rs
+
+testModuleNameRewrite :: IO ()
+testModuleNameRewrite =
+  testRewrite
+    "foo-test.purs"
+    "./test/data/module-rename-single.diff"
+    (getModuleName <$>)
+    ( \moduleNames rules ->
+        do
+          moduleNames `shouldContain` (toModuleName <$> rules)
+          moduleNames `shouldNotContain` (fromModuleName <$> rules)
+    )
 
 testSingleImportRename :: IO ()
 testSingleImportRename =
