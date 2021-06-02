@@ -8,6 +8,7 @@ import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (readModuleFromPath, readRulesFromPath)
 import Data.CSTRewrite.Rule
   ( Rule (ImportRenameRule, ModuleRenameRule, toImportName),
+    Rules,
     fromImportName,
     fromModuleName,
     toModuleName,
@@ -69,23 +70,16 @@ getImportDeclNames decl =
         Nothing -> []
 
 testModuleNameRewrite :: IO ()
-testModuleNameRewrite = do
-  psModule <- readModuleFromPath $ testModule "foo-test.purs"
-  rules <- readRulesFromPath "./test/data/module-rename-single.diff"
-
-  let rewritten = rewrite rules psModule
-      moduleNames = getModuleName <$> PS.modImports rewritten
-      rule = head rules
-   in do
-        moduleNames `shouldContain` [toModuleName rule]
-        moduleNames `shouldNotContain` [fromModuleName rule]
-        withSystemTempDirectory "rewrite-test" $ \dirPath ->
-          do
-            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
-            rewrittenFromFile <- readModuleFromPath fp
-            let rewrittenModNames = getModuleName <$> PS.modImports rewrittenFromFile
-            rewrittenModNames `shouldContain` [toModuleName rule]
-            rewrittenModNames `shouldNotContain` [fromModuleName rule]
+testModuleNameRewrite =
+  testRewrite
+    "foo-test.purs"
+    "./test/data/module-rename-single.diff"
+    (getModuleName <$>)
+    ( \moduleNames rules ->
+        do
+          moduleNames `shouldContain` (toModuleName <$> rules)
+          moduleNames `shouldNotContain` (fromModuleName <$> rules)
+    )
 
 testModuleRenameRuleParser :: IO ()
 testModuleRenameRuleParser = do
@@ -144,24 +138,42 @@ testMixedRuleParse = do
         "Expected exactly a module rename rule, than an import rename rule. Got: " <> show rs
 
 testSingleImportRename :: IO ()
-testSingleImportRename = do
-  psModule <- readModuleFromPath $ testModule "foo-simple-import-rename.purs"
-  rules <- readRulesFromPath "./test/data/import-rename-single.diff"
+testSingleImportRename =
+  testRewrite
+    "foo-simple-import-rename.purs"
+    "./test/data/import-rename-single.diff"
+    (getImportDeclNames =<<)
+    ( \idents rules ->
+        do
+          idents `shouldContain` (toImportName <$> rules)
+          idents `shouldNotContain` (fromImportName <$> rules)
+    )
+
+testRewrite ::
+  -- | Where the test module lives
+  FilePath ->
+  -- | Where the rules file lives
+  FilePath ->
+  -- | how to get the items of interest from import declarations
+  ([PS.ImportDecl ()] -> a) ->
+  -- | what to expect about extracted values
+  (a -> Rules () -> IO ()) ->
+  IO ()
+testRewrite modPath rulePath extractor expecter = do
+  psModule <- readModuleFromPath $ testModule modPath
+  rules <- readRulesFromPath rulePath
 
   let rewritten = rewrite rules psModule
       imports = PS.modImports rewritten
-      rule = head rules
-      idents = getImportDeclNames =<< imports
+      extracted = extractor imports
    in do
-        idents `shouldContain` [toImportName rule]
-        idents `shouldNotContain` [fromImportName rule]
+        expecter extracted rules
         withSystemTempDirectory "rewrite-test" $ \dirPath ->
           do
             fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
             rewrittenFromFile <- readModuleFromPath fp
-            let rewrittenImportNames = getImportDeclNames =<< PS.modImports rewrittenFromFile
-            rewrittenImportNames `shouldContain` [toImportName rule]
-            rewrittenImportNames `shouldNotContain` [fromImportName rule]
+            let postRewrite = extractor $ PS.modImports rewrittenFromFile
+            expecter postRewrite rules
 
 unexpectedRule :: MonadFail m => Rule () -> m ()
 unexpectedRule rule =
