@@ -51,6 +51,8 @@ test-suite cst-rewrite-test
                      , text
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
+  default-extensions:  LambdaCase
+                     , OverloadedStrings
 
 source-repository head
   type:     git

@@ -1,17 +1,22 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main where
 
 import Control.Monad (mzero)
 import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (readModuleFromPath, readRulesFromPath)
 import Data.CSTRewrite.Rule
-  ( Rule (ImportRenameRule, ModuleRenameRule, toImportName),
+  ( Rule
+      ( ImportRenameRule,
+        ModuleRenameRule,
+        toImportName
+      ),
     Rules,
     fromImportName,
+    fromImportNames,
     fromModuleName,
+    fromModuleNames,
+    toImportNames,
     toModuleName,
+    toModuleNames,
   )
 import Data.Functor (void)
 import qualified Data.Text as T
@@ -41,7 +46,7 @@ main = hspec $ do
     it "renames plural imports" testPluralImportRename
   describe "apply staged renames" $ do
     it "parses a rule file with more than one rule defined" testMixedRuleParse
-    xit "applies renames successively" (mzero :: IO ())
+    it "applies renames successively" testStagedRewrite
     xit "gets back to the beginning with a circular rename rule" (mzero :: IO ())
 
 testModule :: FilePath -> FilePath
@@ -159,6 +164,20 @@ testPluralImportRename =
     ( \idents rules -> do
         void $ traverse (\rule -> idents `shouldNotContain` [fromImportName rule]) rules
         void $ traverse (\rule -> idents `shouldContain` [toImportName rule]) rules
+    )
+
+testStagedRewrite :: IO ()
+testStagedRewrite =
+  testRewrite
+    "staged-rename.purs"
+    "./test/data/staged-rename.diff"
+    (\decls -> (getModuleName <$> decls, getImportDeclNames =<< decls))
+    ( \(moduleNames, idents) rules ->
+        do
+          moduleNames `shouldContain` toModuleNames rules
+          moduleNames `shouldNotContain` fromModuleNames rules
+          idents `shouldContain` toImportNames rules
+          idents `shouldNotContain` fromImportNames rules
     )
 
 testRewrite ::
