@@ -7,7 +7,8 @@ import Control.Monad (mzero)
 import Data.CSTRewrite (rewrite)
 import Data.CSTRewrite.Parser (readModuleFromPath, readRulesFromPath)
 import Data.CSTRewrite.Rule
-  ( Rule (ImportRenameRule, ModuleRenameRule),
+  ( Rule (ImportRenameRule, ModuleRenameRule, toImportName),
+    fromImportName,
     fromModuleName,
     toModuleName,
   )
@@ -34,34 +35,57 @@ main = hspec $ do
   describe "rename imports" $ do
     it "parses a sample import rename rule" testImportRenameRuleParser
     it "parses an import rule for plural imports" testImportRenameRulePluralParser
-    xit "renames a single import" (mzero :: IO ())
+    it "renames a single import" testSingleImportRename
     xit "renames plural imports" (mzero :: IO ())
   describe "apply staged renames" $ do
     it "parses a rule file with more than one rule defined" testMixedRuleParse
     xit "applies renames successively" (mzero :: IO ())
     xit "gets back to the beginning with a circular rename rule" (mzero :: IO ())
 
+testModule :: FilePath -> FilePath
+testModule = ("./test/data/example-modules/" <>)
+
 getModuleName :: PS.ImportDecl a -> ModuleName
 getModuleName = PS.nameValue . PS.impModule
 
+getImportNames :: PS.Import a -> [PS.Ident]
+getImportNames =
+  ( \case
+      PS.ImportValue _ (PS.Name _ ident) -> [ident]
+      _ -> []
+  )
+
+getImportDeclNames :: PS.ImportDecl a -> [PS.Ident]
+getImportDeclNames decl =
+  let maybeNames = PS.impNames decl
+   in case maybeNames of
+        Just names ->
+          ( \case
+              (_, PS.Wrapped _ (PS.Separated (PS.ImportValue _ (PS.Name _ v)) t) _) ->
+                v : (foldMap getImportNames . fmap snd $ t)
+              _ -> []
+          )
+            names
+        Nothing -> []
+
 testModuleNameRewrite :: IO ()
 testModuleNameRewrite = do
-  psModule <- readModuleFromPath "./test/data/example-modules/foo-test.purs"
+  psModule <- readModuleFromPath $ testModule "foo-test.purs"
   rules <- readRulesFromPath "./test/data/module-rename-single.diff"
 
   let rewritten = rewrite rules psModule
       moduleNames = getModuleName <$> PS.modImports rewritten
       rule = head rules
    in do
-        moduleNames `shouldContain` ([toModuleName rule])
-        moduleNames `shouldNotContain` ([fromModuleName rule])
+        moduleNames `shouldContain` [toModuleName rule]
+        moduleNames `shouldNotContain` [fromModuleName rule]
         withSystemTempDirectory "rewrite-test" $ \dirPath ->
           do
             fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
             rewrittenFromFile <- readModuleFromPath fp
             let rewrittenModNames = getModuleName <$> PS.modImports rewrittenFromFile
-            rewrittenModNames `shouldContain` ([toModuleName rule])
-            rewrittenModNames `shouldNotContain` ([fromModuleName rule])
+            rewrittenModNames `shouldContain` [toModuleName rule]
+            rewrittenModNames `shouldNotContain` [fromModuleName rule]
 
 testModuleRenameRuleParser :: IO ()
 testModuleRenameRuleParser = do
@@ -118,6 +142,26 @@ testMixedRuleParse = do
     rs ->
       fail $
         "Expected exactly a module rename rule, than an import rename rule. Got: " <> show rs
+
+testSingleImportRename :: IO ()
+testSingleImportRename = do
+  psModule <- readModuleFromPath $ testModule "foo-simple-import-rename.purs"
+  rules <- readRulesFromPath "./test/data/import-rename-single.diff"
+
+  let rewritten = rewrite rules psModule
+      imports = PS.modImports rewritten
+      rule = head rules
+      idents = getImportDeclNames =<< imports
+   in do
+        idents `shouldContain` [toImportName rule]
+        idents `shouldNotContain` [fromImportName rule]
+        withSystemTempDirectory "rewrite-test" $ \dirPath ->
+          do
+            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
+            rewrittenFromFile <- readModuleFromPath fp
+            let rewrittenImportNames = getImportDeclNames =<< PS.modImports rewrittenFromFile
+            rewrittenImportNames `shouldContain` [toImportName rule]
+            rewrittenImportNames `shouldNotContain` [fromImportName rule]
 
 unexpectedRule :: MonadFail m => Rule () -> m ()
 unexpectedRule rule =
