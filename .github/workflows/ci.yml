@@ -19,10 +19,13 @@ jobs:
       - uses: haskell/actions/setup@v1
         with:
           ghc-version: "8.10.4"
+      - name: enable coverage
+        run: |
+          cabal configure --enable-tests --enable-coverage
       - name: Freeze
         run: |
           cabal freeze
-      - name: Cache ~/.cabal/packages, ~/.cabal/store and dist-newstyle
+      - name: Cache ~/.cabal/packages and ~/.cabal/store
         uses: actions/cache@v2
         with:
           path: ~/.cabal/store
