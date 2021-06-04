@@ -49,11 +49,15 @@ main = hspec $ do
   describe "apply staged renames" $ do
     it "parses a rule file with more than one rule defined" testMixedRuleParse
     it "applies renames successively" testStagedRewrite
-    it "gets back to the beginning with a simple circular rename rule" testSimpleCircularRewrite
+    it "gets back to the beginning with a simple circular module rename rule" testSimpleCircularModuleRewrite
+    it "gets back to the beginning with a simple circular import rename rule" testSimpleCircularImportRewrite
     it "gets back to the beginning with a complex circular rename rule" testComplexCircularRewrite
 
 testModule :: FilePath -> FilePath
 testModule = ("./test/data/example-modules/" <>)
+
+testRule :: FilePath -> FilePath
+testRule = ("./test/data/" <>)
 
 getModuleName :: PS.ImportDecl a -> ModuleName
 getModuleName = PS.nameValue . PS.impModule
@@ -80,7 +84,7 @@ getImportDeclNames decl =
 
 testModuleRenameRuleParser :: IO ()
 testModuleRenameRuleParser = do
-  rules <- readRulesFromPath "./test/data/module-rename-single.diff"
+  rules <- readRulesFromPath $ testRule "module-rename-single.diff"
   foldMap
     ( \case
         ModuleRenameRule from to ->
@@ -94,7 +98,7 @@ testModuleRenameRuleParser = do
 
 testImportRenameRuleParser :: IO ()
 testImportRenameRuleParser = do
-  rules <- readRulesFromPath "./test/data/import-rename-single.diff"
+  rules <- readRulesFromPath $ testRule "import-rename-single.diff"
   foldMap
     ( \case
         ImportRenameRule from to ->
@@ -108,7 +112,7 @@ testImportRenameRuleParser = do
 
 testImportRenameRulePluralParser :: IO ()
 testImportRenameRulePluralParser = do
-  rules <- readRulesFromPath "./test/data/import-rename-plural.diff"
+  rules <- readRulesFromPath $ testRule "import-rename-plural.diff"
   let checks = zip [(PS.Ident "bar", PS.Ident "qux"), (PS.Ident "baz", PS.Ident "quux")] rules
   foldMap
     ( \case
@@ -122,7 +126,7 @@ testImportRenameRulePluralParser = do
 
 testMixedRuleParse :: IO ()
 testMixedRuleParse = do
-  rules <- readRulesFromPath "./test/data/staged-rename.diff"
+  rules <- readRulesFromPath $ testRule "staged-rename.diff"
   case rules of
     [ModuleRenameRule modFrom modTo, ImportRenameRule impFrom impTo] ->
       do
@@ -138,7 +142,7 @@ testModuleNameRewrite :: IO ()
 testModuleNameRewrite =
   testRewrite
     "foo-test.purs"
-    "./test/data/module-rename-single.diff"
+    "module-rename-single.diff"
     (getModuleName <$>)
     ( \moduleNames rules ->
         do
@@ -150,7 +154,7 @@ testSingleImportRename :: IO ()
 testSingleImportRename =
   testRewrite
     "foo-simple-import-rename.purs"
-    "./test/data/import-rename-single.diff"
+    "import-rename-single.diff"
     (getImportDeclNames =<<)
     ( \idents rules ->
         do
@@ -162,7 +166,7 @@ testPluralImportRename :: IO ()
 testPluralImportRename =
   testRewrite
     "foo-multi-import.purs"
-    "./test/data/import-rename-plural.diff"
+    "import-rename-plural.diff"
     (getImportDeclNames =<<)
     ( \idents rules -> do
         void $ traverse (\rule -> idents `shouldNotContain` [fromImportName rule]) rules
@@ -173,7 +177,7 @@ testStagedRewrite :: IO ()
 testStagedRewrite =
   testRewrite
     "staged-rename.purs"
-    "./test/data/staged-rename.diff"
+    "staged-rename.diff"
     (\decls -> (getModuleName <$> decls, getImportDeclNames =<< decls))
     ( \(moduleNames, idents) rules ->
         do
@@ -183,51 +187,44 @@ testStagedRewrite =
           idents `shouldNotContain` fromImportNames rules
     )
 
-testSimpleCircularRewrite :: IO ()
-testSimpleCircularRewrite = do
-  psModule <- readModuleFromPath $ testModule "foo-test.purs"
-  rules <- readRulesFromPath "./test/data/circular-rename-simple-module.diff"
+testSimpleCircularModuleRewrite :: IO ()
+testSimpleCircularModuleRewrite =
+  testRewriteRoundTrip "foo-test.purs" "circular-rename-simple-module.diff"
 
-  let rewritten = rewrite rules psModule
-      startImports = PS.modImports psModule
-      imports = PS.modImports rewritten
-   in do
-        imports `shouldBe` startImports
-        withSystemTempDirectory "rewrite-test" $ \dirPath ->
-          do
-            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
-            rewrittenFromFile <- readModuleFromPath fp
-            let postRewrite = PS.modImports rewrittenFromFile
-            postRewrite `shouldBe` startImports
+testSimpleCircularImportRewrite :: IO ()
+testSimpleCircularImportRewrite = testRewriteRoundTrip "foo-simple-import-rename.purs" "circular-rename-simple-import.diff"
 
 testComplexCircularRewrite :: IO ()
-testComplexCircularRewrite = do
-  psModule <- readModuleFromPath $ testModule "foo-test.purs"
-  rules <- readRulesFromPath "./test/data/circular-rename.diff"
-
-  let rewritten = rewrite rules psModule
-      startImports = PS.modImports psModule
-      imports = PS.modImports rewritten
-   in do
-        imports `shouldBe` startImports
-        withSystemTempDirectory "rewrite-test" $ \dirPath ->
-          do
-            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
-            rewrittenFromFile <- readModuleFromPath fp
-            let postRewrite = PS.modImports rewrittenFromFile
-            postRewrite `shouldBe` startImports
+testComplexCircularRewrite = testRewriteRoundTrip "foo-test.purs" "circular-rename.diff"
 
 testModuleShorten :: IO ()
 testModuleShorten =
   testRewrite
     "foo-lib.purs"
-    "./test/data/import-shorten.diff"
+    "import-shorten.diff"
     (getModuleName <$>)
     ( \moduleNames rules ->
         do
           moduleNames `shouldContain` (toModuleName <$> rules)
           moduleNames `shouldNotContain` (fromModuleName <$> rules)
     )
+
+testRewriteRoundTrip :: FilePath -> FilePath -> IO ()
+testRewriteRoundTrip inModule inRule = do
+  psModule <- readModuleFromPath $ testModule inModule
+  rules <- readRulesFromPath (testRule inRule)
+
+  let rewritten = rewrite rules psModule
+      startImports = PS.modImports psModule
+      imports = PS.modImports rewritten
+   in do
+        imports `shouldBe` startImports
+        withSystemTempDirectory "rewrite-test" $ \dirPath ->
+          do
+            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
+            rewrittenFromFile <- readModuleFromPath fp
+            let postRewrite = PS.modImports rewrittenFromFile
+            postRewrite `shouldBe` startImports
 
 testRewrite ::
   -- | Where the test module lives
@@ -241,7 +238,7 @@ testRewrite ::
   IO ()
 testRewrite modPath rulePath extractor expecter = do
   psModule <- readModuleFromPath $ testModule modPath
-  rules <- readRulesFromPath rulePath
+  rules <- readRulesFromPath (testRule rulePath)
 
   let rewritten = rewrite rules psModule
       imports = PS.modImports rewritten

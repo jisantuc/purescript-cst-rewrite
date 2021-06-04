@@ -1,0 +1,11 @@
+# import rename
+--- from
+-import Foo (bar)
++++ to
++import Foo (baz)
+
+# import rename
+--- from
+-import Foo (baz)
++++ to
++import Foo (bar)
