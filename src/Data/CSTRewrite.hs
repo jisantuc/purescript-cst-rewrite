@@ -35,7 +35,6 @@ replaceImportName fromIdent toIdent imp@(PS.ImportValue e (PS.Name nameToken nam
     else imp
 replaceImportName _ _ imp = imp
 
--- replace impKeyword -> SourceToken { }
 renameImport :: (Eq e, Show e) => PS.Ident -> PS.Ident -> PS.ImportDecl e -> PS.ImportDecl e
 renameImport fromValue toValue decl =
   let names = PS.impNames decl
@@ -53,7 +52,7 @@ renameImport fromValue toValue decl =
 
 rewrite :: (Eq e, Show e) => Rules e -> PS.Module e -> PS.Module e
 rewrite rules psModule =
-  let replacer = foldMap mkReplacer rules
+  let replacer = foldMap mkReplacer $ reverse rules
       replaced = appEndo replacer <$> PS.modImports psModule
    in psModule {PS.modImports = replaced}
 
