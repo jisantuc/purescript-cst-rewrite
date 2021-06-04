@@ -31,4 +31,4 @@ jobs:
         if: steps.cache-primes.outputs.cache-hit != 'true'
         run: cabal build all --only-dependencies
       - name: Build and test project
-        run: cabal build all && cabal test all --test-options=--color
+        run: cabal build all && cabal test all --test-options=--color --enable-coverage
