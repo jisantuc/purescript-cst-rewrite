@@ -1,0 +1,11 @@
+# module rename
+--- from
+-import Foo
++++ to
++import Foo.Lib
+
+# import rename
+--- from
+-import Foo.Lib (bar)
++++ to
++import Foo.Lib (baz)
