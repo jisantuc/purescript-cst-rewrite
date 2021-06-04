@@ -14,6 +14,8 @@ git diff
 
 Then you can inspect the rule and the diff produced by applying it.
 
+You can see more examples of rules and rewrites in [`Spec.hs`](./test/Spec.hs)
+
 ## Long version
 
 [ScalaFix] is a tool for automatically rewriting Scala code based on
