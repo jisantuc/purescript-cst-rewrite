@@ -75,7 +75,7 @@ The short-term road map is:
 
 - [x] automatic module renames
 - [x] add the CLI
-- [ ] rename imports (e.g. `s/import Foo (bar)/import Foo (baz)/`)
+- [x] rename imports (e.g. `s/import Foo (bar)/import Foo (baz)/`)
 
 [ScalaFix]: https://scalacenter.github.io/scalafix/
 [`cats-effect` 3.0 release]: https://github.com/typelevel/cats-effect/tree/series/3.x/scalafix/v3_0_0/input/src/main/scala/fix
