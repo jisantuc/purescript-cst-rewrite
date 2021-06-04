@@ -40,6 +40,7 @@ main = hspec $ do
   describe "rename modules" $ do
     it "parses a sample module rename rule" testModuleRenameRuleParser
     it "replaces the old module name in imports with the new one" testModuleNameRewrite
+    it "replaces a longer module name with a shorter one" testModuleShorten
   describe "rename imports" $ do
     it "parses a sample import rename rule" testImportRenameRuleParser
     it "parses an import rule for plural imports" testImportRenameRulePluralParser
@@ -197,6 +198,18 @@ testCircularRewrite = do
             rewrittenFromFile <- readModuleFromPath fp
             let postRewrite = PS.modImports rewrittenFromFile
             postRewrite `shouldBe` startImports
+
+testModuleShorten :: IO ()
+testModuleShorten =
+  testRewrite
+    "foo-lib.purs"
+    "./test/data/import-shorten.diff"
+    (getModuleName <$>)
+    ( \moduleNames rules ->
+        do
+          moduleNames `shouldContain` (toModuleName <$> rules)
+          moduleNames `shouldNotContain` (fromModuleName <$> rules)
+    )
 
 testRewrite ::
   -- | Where the test module lives
