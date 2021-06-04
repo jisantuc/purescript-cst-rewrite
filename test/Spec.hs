@@ -49,7 +49,8 @@ main = hspec $ do
   describe "apply staged renames" $ do
     it "parses a rule file with more than one rule defined" testMixedRuleParse
     it "applies renames successively" testStagedRewrite
-    it "gets back to the beginning with a circular rename rule" testCircularRewrite
+    it "gets back to the beginning with a simple circular rename rule" testSimpleCircularRewrite
+    it "gets back to the beginning with a complex circular rename rule" testComplexCircularRewrite
 
 testModule :: FilePath -> FilePath
 testModule = ("./test/data/example-modules/" <>)
@@ -182,8 +183,25 @@ testStagedRewrite =
           idents `shouldNotContain` fromImportNames rules
     )
 
-testCircularRewrite :: IO ()
-testCircularRewrite = do
+testSimpleCircularRewrite :: IO ()
+testSimpleCircularRewrite = do
+  psModule <- readModuleFromPath $ testModule "foo-test.purs"
+  rules <- readRulesFromPath "./test/data/circular-rename-simple-module.diff"
+
+  let rewritten = rewrite rules psModule
+      startImports = PS.modImports psModule
+      imports = PS.modImports rewritten
+   in do
+        imports `shouldBe` startImports
+        withSystemTempDirectory "rewrite-test" $ \dirPath ->
+          do
+            fp <- writeTempFile dirPath "rewrite-test" (T.unpack $ PS.printModule rewritten)
+            rewrittenFromFile <- readModuleFromPath fp
+            let postRewrite = PS.modImports rewrittenFromFile
+            postRewrite `shouldBe` startImports
+
+testComplexCircularRewrite :: IO ()
+testComplexCircularRewrite = do
   psModule <- readModuleFromPath $ testModule "foo-test.purs"
   rules <- readRulesFromPath "./test/data/circular-rename.diff"
 
