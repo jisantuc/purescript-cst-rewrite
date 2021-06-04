@@ -32,3 +32,8 @@ jobs:
         run: cabal build all --only-dependencies
       - name: Build and test project
         run: cabal build all && cabal test all --test-options=--color --enable-coverage
+      - name: upload coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage report
+          path: ./dist-newstyle/build/x86_64-linux/ghc-8.10.4/purescript-cst-rewrite-0.1.0.0/hpc/vanilla/html/purescript-cst-rewrite-0.1.0.0/
